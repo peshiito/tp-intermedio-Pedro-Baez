@@ -1,4 +1,4 @@
-import { pool } from "../database/mysql";
+import pool from "../database/mysql";
 
 export const findUserByEmail = async (email: string) => {
   const [rows]: any = await pool.execute(
