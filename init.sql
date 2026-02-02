@@ -1,51 +1,14 @@
-CREATE DATABASE IF NOT EXISTS patitas_felices;
+-- CREAR BASE DE DATOS
+CREATE DATABASE IF NOT EXISTS patitas_felices
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
+
 USE patitas_felices;
 
-CREATE TABLE duenos (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    nombre VARCHAR(50) NOT NULL,
-    apellido VARCHAR(50) NOT NULL,
-    telefono VARCHAR(20) NOT NULL,
-    direccion VARCHAR(100)
-);
-
-CREATE TABLE mascotas (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    nombre VARCHAR(50) NOT NULL,
-    especie VARCHAR(30) NOT NULL,
-    fecha_nacimiento DATE,
-    usuario_id INT, 
-    CONSTRAINT fk_usuario_mascota FOREIGN KEY (usuario_id) 
-        REFERENCES usuarios(id) ON DELETE CASCADE
-);
-
-CREATE TABLE veterinarios (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    nombre VARCHAR(50) NOT NULL,
-    apellido VARCHAR(50) NOT NULL,
-    matricula VARCHAR(20) UNIQUE NOT NULL,
-    especialidad VARCHAR(50) NOT NULL
-);
-
-CREATE TABLE historial_clinico (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    id_mascota INT NOT NULL,
-    id_veterinario INT NOT NULL,
-    fecha_registro DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    descripcion VARCHAR(250) NOT NULL,
-    CONSTRAINT fk_mascota_historial FOREIGN KEY (id_mascota) 
-        REFERENCES mascotas(id) ON DELETE CASCADE,
-    CONSTRAINT fk_veterinario_historial FOREIGN KEY (id_veterinario) 
-        REFERENCES veterinarios(id)
-);
-
-CREATE TABLE roles (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    nombre VARCHAR(50) NOT NULL UNIQUE
-);
-
-INSERT INTO roles (nombre) VALUES ('admin'), ('user');
-
+-- USUARIOS
+-- Roles:
+-- 1: ADMIN → administra todo
+-- 2: USER → dueño de mascotas
 CREATE TABLE usuarios (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(50) NOT NULL,
@@ -53,7 +16,66 @@ CREATE TABLE usuarios (
     email VARCHAR(100) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     telefono VARCHAR(20),
-    direccion VARCHAR(100),
-    rol_id INT DEFAULT 2,
-    CONSTRAINT fk_usuario_rol FOREIGN KEY (rol_id) REFERENCES roles(id)
+    direccion TEXT,
+    rol_id INT NOT NULL DEFAULT 2,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- MASCOTAS
+-- Cada mascota pertenece a un usuario
+CREATE TABLE mascotas (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL,
+    especie VARCHAR(50) NOT NULL,
+    fecha_nacimiento DATE,
+    usuario_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_mascota_usuario
+        FOREIGN KEY (usuario_id)
+        REFERENCES usuarios(id)
+        ON DELETE CASCADE
+);
+
+-- VETERINARIOS
+-- Solo ADMIN puede crear veterinarios (logica backend)
+CREATE TABLE veterinarios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL,
+    apellido VARCHAR(50) NOT NULL,
+    matricula VARCHAR(50) NOT NULL UNIQUE,
+    especialidad VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- HISTORIALES CLÍNICOS
+-- Relaciona mascota, veterinario, descripcion
+CREATE TABLE historiales_clinicos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    id_mascota INT NOT NULL,
+    id_veterinario INT NOT NULL,
+    descripcion TEXT NOT NULL,
+    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_historial_mascota
+        FOREIGN KEY (id_mascota)
+        REFERENCES mascotas(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_historial_veterinario
+        FOREIGN KEY (id_veterinario)
+        REFERENCES veterinarios(id)
+        ON DELETE RESTRICT
+);
+
+-- INDEXES (performance)
+CREATE INDEX idx_mascotas_usuario ON mascotas(usuario_id);
+CREATE INDEX idx_historial_mascota ON historiales_clinicos(id_mascota);
+CREATE INDEX idx_historial_veterinario ON historiales_clinicos(id_veterinario);
+
+-- DATOS DE EJEMPLO
+-- Insertar veterinario de ejemplo
+INSERT INTO veterinarios (nombre, apellido, matricula, especialidad) VALUES
+('Dr. Juan', 'Pérez', 'MAT-001', 'Medicina General');
+
+-- Nota: Para insertar historiales, primero registra un usuario y una mascota, luego inserta manualmente o desde admin.

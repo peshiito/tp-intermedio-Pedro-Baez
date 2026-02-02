@@ -1,24 +1,48 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import { JwtPayload } from "../types/auth";
 
+const JWT_SECRET = process.env.JWT_SECRET as string;
+
+/**
+ * Middleware de autenticación
+ *
+ * Verifica que el token sea válido y lo almacena en req.user
+ */
 export const verifyToken = (
-  req: Request & { user?: any },
+  req: Request & { user?: JwtPayload },
   res: Response,
   next: NextFunction,
 ) => {
-  const authHeader = req.headers.authorization;
+  const token = req.headers.authorization?.split(" ")[1]; // Bearer <token>
 
-  if (!authHeader) {
-    return res.status(401).json({ message: "Token requerido" });
+  if (!token) {
+    return res.status(401).json({ message: "No token provided" });
   }
 
-  const token = authHeader.split(" ")[1];
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET as string);
-    req.user = decoded;
+  jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(403).json({ message: "Invalid token or expired" });
+    }
+    req.user = decoded as JwtPayload;
     next();
-  } catch (error) {
-    return res.status(401).json({ message: "Token inválido" });
+  });
+};
+
+/**
+ * Middleware de autorización
+ *
+ * Verifica que el usuario tenga uno de los roles permitidos
+ */
+export const adminMiddleware = (
+  req: Request & { user?: JwtPayload },
+  res: Response,
+  next: NextFunction,
+) => {
+  if (!req.user || req.user.rol_id !== 1) {
+    return res
+      .status(403)
+      .json({ message: "Acceso solo para administradores" });
   }
+  next();
 };

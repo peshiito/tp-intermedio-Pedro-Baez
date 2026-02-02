@@ -1,4 +1,4 @@
-import express from "express";
+import express, { Request } from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import { engine } from "express-handlebars";
@@ -7,6 +7,7 @@ import authRoutes from "./routes/auth.routes";
 import adminRoutes from "./routes/admin.routes";
 import mascotasRoutes from "./routes/mascotas.routes";
 import { verifyToken } from "./middlewares/auth.middleware";
+import { JwtPayload } from "./types/auth";
 
 dotenv.config();
 
@@ -38,13 +39,17 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/mascotas", mascotasRoutes);
 
 // Ruta visual protegida
-app.get("/dashboard", verifyToken, (req: any, res) => {
-  const rolNombre = req.user.rol_id === 1 ? "admin" : "user";
-  res.render("dashboard", {
-    nombre: req.user.nombre,
-    rol: rolNombre,
-  });
-});
+app.get(
+  "/dashboard",
+  verifyToken,
+  (req: Request & { user?: JwtPayload }, res) => {
+    const rolNombre = req.user!.rol_id === 1 ? "admin" : "user";
+    res.render("dashboard", {
+      nombre: req.user!.nombre,
+      rol: rolNombre,
+    });
+  },
+);
 
 // Root simple
 app.get("/", (_req, res) => {
