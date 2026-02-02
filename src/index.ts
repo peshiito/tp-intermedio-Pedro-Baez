@@ -1,15 +1,24 @@
-import express, { Request, Response } from "express";
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import { connectDB } from "../src/database/mysql";
+
+dotenv.config();
 
 const app = express();
 
-const PORT = 3000;
-
+// Middlewares básicos
+app.use(cors());
 app.use(express.json());
 
-app.get("/", (req: Request, res: Response) => {
-  res.json({ message: "Servidor funcionando 🚀" });
-});
+const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
-  console.log(`Servidor escuchando en http://localhost:${PORT}`);
-});
+const startServer = async () => {
+  await connectDB();
+
+  app.listen(PORT, () => {
+    console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+  });
+};
+
+startServer();
