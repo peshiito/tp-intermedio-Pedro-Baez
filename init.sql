@@ -1,5 +1,5 @@
-CREATE DATABASE IF NOT EXISTS Veterinaria_patitas_felices;
-USE Veterinaria_patitas_felices;
+CREATE DATABASE IF NOT EXISTS patitas_felices;
+USE patitas_felices;
 
 CREATE TABLE duenos (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -14,9 +14,9 @@ CREATE TABLE mascotas (
     nombre VARCHAR(50) NOT NULL,
     especie VARCHAR(30) NOT NULL,
     fecha_nacimiento DATE,
-    id_dueno INT, 
-    CONSTRAINT fk_dueno_mascota FOREIGN KEY (id_dueno) 
-        REFERENCES duenos(id) ON DELETE CASCADE
+    usuario_id INT, 
+    CONSTRAINT fk_usuario_mascota FOREIGN KEY (usuario_id) 
+        REFERENCES usuarios(id) ON DELETE CASCADE
 );
 
 CREATE TABLE veterinarios (
@@ -37,4 +37,23 @@ CREATE TABLE historial_clinico (
         REFERENCES mascotas(id) ON DELETE CASCADE,
     CONSTRAINT fk_veterinario_historial FOREIGN KEY (id_veterinario) 
         REFERENCES veterinarios(id)
+);
+
+CREATE TABLE roles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL UNIQUE
+);
+
+INSERT INTO roles (nombre) VALUES ('admin'), ('user');
+
+CREATE TABLE usuarios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL,
+    apellido VARCHAR(50),
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    telefono VARCHAR(20),
+    direccion VARCHAR(100),
+    rol_id INT DEFAULT 2,
+    CONSTRAINT fk_usuario_rol FOREIGN KEY (rol_id) REFERENCES roles(id)
 );

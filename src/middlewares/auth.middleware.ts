@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
-export const authMiddleware = (
+export const verifyToken = (
   req: Request & { user?: any },
   res: Response,
   next: NextFunction,
@@ -18,7 +18,7 @@ export const authMiddleware = (
     const decoded = jwt.verify(token, process.env.JWT_SECRET as string);
     req.user = decoded;
     next();
-  } catch {
-    res.status(401).json({ message: "Token inválido" });
+  } catch (error) {
+    return res.status(401).json({ message: "Token inválido" });
   }
 };

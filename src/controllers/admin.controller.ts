@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { pool } from "../database/mysql";
+import pool from "../database/mysql";
 
 export const getUsuarios = async (_req: Request, res: Response) => {
   const [usuarios] = await pool.query(

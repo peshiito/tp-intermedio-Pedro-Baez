@@ -1,53 +1,56 @@
 import express from "express";
-import cors from "cors";
 import dotenv from "dotenv";
+import cors from "cors";
+import { engine } from "express-handlebars";
 
-// Rutas
 import authRoutes from "./routes/auth.routes";
-import mascotasRoutes from "./routes/mascotas.routes";
 import adminRoutes from "./routes/admin.routes";
+import mascotasRoutes from "./routes/mascotas.routes";
+import { verifyToken } from "./middlewares/auth.middleware";
 
-// Config
 dotenv.config();
 
 const app = express();
+const PORT = process.env.PORT || 3000;
 
-// Middlewares globales
+// Middlewares
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Ruta base (health check)
-app.get("/", (_req, res) => {
-  res.json({
-    message: "API Patitas Felices funcionando 🐾",
-    status: "OK",
+// Handlebars
+app.engine(
+  "hbs",
+  engine({
+    extname: ".hbs",
+    defaultLayout: "main",
+    helpers: {
+      eq: (a: any, b: any) => a === b,
+    },
+  }),
+);
+app.set("view engine", "hbs");
+app.set("views", "./src/views");
+
+// Rutas API
+app.use("/api/auth", authRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/mascotas", mascotasRoutes);
+
+// Ruta visual protegida
+app.get("/dashboard", verifyToken, (req: any, res) => {
+  const rolNombre = req.user.rol_id === 1 ? "admin" : "user";
+  res.render("dashboard", {
+    nombre: req.user.nombre,
+    rol: rolNombre,
   });
 });
 
-// Rutas
-app.use("/api/auth", authRoutes);
-app.use("/api/mascotas", mascotasRoutes);
-app.use("/api/admin", adminRoutes);
-
-// Middleware de errores global (simple)
-app.use(
-  (
-    err: any,
-    _req: express.Request,
-    res: express.Response,
-    _next: express.NextFunction,
-  ) => {
-    console.error(err);
-    res.status(500).json({
-      message: "Error interno del servidor",
-    });
-  },
-);
-
-// Server
-const PORT = process.env.PORT || 3000;
+// Root simple
+app.get("/", (_req, res) => {
+  res.send("API Patitas Felices funcionando 🐾");
+});
 
 app.listen(PORT, () => {
-  console.log(`🐾 Servidor Patitas Felices corriendo en puerto ${PORT}`);
-  console.log(`Puerto para entrar http://localhost:${PORT}`);
+  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
 });
