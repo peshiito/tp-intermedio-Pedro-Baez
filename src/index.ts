@@ -1,24 +1,24 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import { connectDB } from "../src/database/mysql";
+import authRoutes from "./routes/auth.routes";
+import mascotasRoutes from "./routes/mascotas.routes";
 
 dotenv.config();
 
 const app = express();
 
-// Middlewares básicos
 app.use(cors());
 app.use(express.json());
 
-const PORT = process.env.PORT || 3000;
+app.use("/api/auth", authRoutes);
 
-const startServer = async () => {
-  await connectDB();
+app.use("/api/mascotas", mascotasRoutes);
 
-  app.listen(PORT, () => {
-    console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
-  });
-};
+app.get("/", (_req, res) => {
+  res.json({ message: "API Patitas Felices funcionando 🐾" });
+});
 
-startServer();
+app.listen(process.env.PORT, () => {
+  console.log(`Servidor corriendo en puerto ${process.env.PORT}`);
+});
