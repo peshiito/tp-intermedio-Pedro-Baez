@@ -8,6 +8,7 @@ import adminRoutes from "./routes/admin.routes";
 import mascotasRoutes from "./routes/mascotas.routes";
 import { verifyToken } from "./middlewares/auth.middleware";
 import { JwtPayload } from "./types/auth";
+import { errorHandler } from "./middlewares/error.middleware";
 
 dotenv.config();
 
@@ -55,6 +56,9 @@ app.get(
 app.get("/", (_req, res) => {
   res.send("API Patitas Felices funcionando 🐾");
 });
+
+// Middleware global de errores
+app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
