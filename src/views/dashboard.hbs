@@ -8,6 +8,11 @@
     <p>Tienes acceso completo al sistema. Puedes gestionar usuarios y todo lo
       demás.</p>
   </div>
+{{else if (eq rol "vet")}}
+  <div class="vet">
+    <p>🩺 Eres Veterinario</p>
+    <p>Puedes crear y gestionar historiales clínicos de mascotas.</p>
+  </div>
 {{else}}
   <div class="user">
     <p>🙋 Eres Usuario</p>

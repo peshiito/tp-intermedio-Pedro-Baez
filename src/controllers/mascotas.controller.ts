@@ -1,31 +1,41 @@
 import { Request, Response } from "express";
-import pool from "../database/mysql";
+import { validationResult } from "express-validator";
+import * as mascotasService from "../services/mascotas.service";
 import { JwtPayload } from "../types/auth";
+import { UserRole } from "../types/roles";
 
 export const createMascota = async (
   req: Request & { user?: JwtPayload },
   res: Response,
 ) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
     if (!req.user) {
       return res.status(401).json({ message: "Usuario no autenticado" });
     }
 
-    const { nombre, especie, fecha_nacimiento } = req.body;
-    const usuarioId = req.user.id;
+    // Solo clientes pueden crear mascotas
+    if (req.user.rol_id !== UserRole.CLIENTE) {
+      return res.status(403).json({
+        message: "Solo clientes pueden registrar mascotas",
+      });
+    }
 
-    const [result]: any = await pool.query(
-      `INSERT INTO mascotas (nombre, especie, fecha_nacimiento, usuario_id)
-       VALUES (?, ?, ?, ?)`,
-      [nombre, especie, fecha_nacimiento, usuarioId],
-    );
+    const mascota = await mascotasService.createMascota({
+      ...req.body,
+      usuario_id: req.user.id,
+    });
 
     res.status(201).json({
-      message: "Mascota registrada",
-      mascotaId: result.insertId,
+      message: "Mascota registrada exitosamente",
+      mascota,
     });
-  } catch (error) {
-    res.status(500).json({ message: "Error al crear mascota" });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -38,20 +48,22 @@ export const getMascotas = async (
       return res.status(401).json({ message: "Usuario no autenticado" });
     }
 
-    const usuarioId = req.user.id;
+    const { activas } = req.query;
+    const soloActivas = activas !== "false"; // Por defecto true
 
-    const [mascotas] = await pool.query(
-      "SELECT id, nombre, especie, fecha_nacimiento, created_at FROM mascotas WHERE usuario_id = ?",
-      [usuarioId],
+    const mascotas = await mascotasService.getMascotasByUser(
+      req.user.id,
+      req.user.rol_id,
+      soloActivas,
     );
 
     res.json(mascotas);
-  } catch (error) {
-    res.status(500).json({ message: "Error al obtener mascotas" });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
   }
 };
 
-export const getHistorialMascota = async (
+export const darBajaMascota = async (
   req: Request & { user?: JwtPayload },
   res: Response,
 ) => {
@@ -61,29 +73,24 @@ export const getHistorialMascota = async (
     }
 
     const { id } = req.params;
-    const usuarioId = req.user.id;
-
-    // Verificar que la mascota pertenece al usuario
-    const [mascota]: any = await pool.query(
-      "SELECT id FROM mascotas WHERE id = ? AND usuario_id = ?",
-      [id, usuarioId],
+    const baja = await mascotasService.darBajaMascota(
+      parseInt(id),
+      req.user.id,
+      req.user.rol_id,
     );
 
-    if (mascota.length === 0) {
-      return res.status(404).json({ message: "Mascota no encontrada o no autorizada" });
+    if (!baja) {
+      return res.status(404).json({ message: "Mascota no encontrada" });
     }
 
-    const [historiales] = await pool.query(
-      `SELECT h.id, h.descripcion, h.fecha_registro, v.nombre as veterinario_nombre, v.apellido as veterinario_apellido, v.matricula
-       FROM historiales_clinicos h
-       JOIN veterinarios v ON h.id_veterinario = v.id
-       WHERE h.id_mascota = ?
-       ORDER BY h.fecha_registro DESC`,
-      [id],
-    );
-
-    res.json(historiales);
-  } catch (error) {
-    res.status(500).json({ message: "Error al obtener historial" });
+    res.json({
+      message:
+        "Mascota dada de baja exitosamente. Los historiales también se eliminaron.",
+    });
+  } catch (error: any) {
+    if (error.message === "No autorizado") {
+      return res.status(403).json({ message: error.message });
+    }
+    res.status(500).json({ message: error.message });
   }
 };

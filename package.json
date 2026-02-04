@@ -1,42 +1,41 @@
 {
-  "name": "tp-intermedio-pedro-baez",
+  "name": "tp-intermedio-nombre-apellido",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "TP Intermedio - Servidor Express + MySQL + JWT + MVC",
+  "main": "dist/index.js",
   "scripts": {
-    "dev": "ts-node-dev --respawn src/index.ts",
+    "dev": "nodemon src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "test": "echo \"No hay tests configurados\" && exit 0"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/peshiito/tp-intermedio-Pedro-Baez.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/peshiito/tp-intermedio-Pedro-Baez/issues"
-  },
-  "homepage": "https://github.com/peshiito/tp-intermedio-Pedro-Baez#readme",
   "dependencies": {
-    "bcrypt": "^6.0.0",
-    "bcryptjs": "^3.0.3",
+    "bcryptjs": "^2.4.3",
     "cors": "^2.8.6",
-    "dotenv": "^17.2.3",
-    "express": "^5.2.1",
-    "express-handlebars": "^8.0.4",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.1",
     "express-validator": "^7.3.1",
     "jsonwebtoken": "^9.0.3",
-    "mysql2": "^3.16.2"
+    "mysql2": "^3.16.3"
   },
   "devDependencies": {
-    "@types/bcrypt": "^6.0.0",
+    "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
+    "@types/express": "^4.17.25",
     "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "^25.1.0",
-    "ts-node-dev": "^2.0.0",
+    "@types/node": "^20.19.31",
+    "nodemon": "^3.1.11",
+    "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
-  }
+  },
+  "keywords": [
+    "express",
+    "typescript",
+    "mysql",
+    "jwt",
+    "mvc",
+    "tp"
+  ],
+  "author": "Tu Nombre",
+  "license": "MIT"
 }

@@ -9,6 +9,7 @@ USE patitas_felices;
 -- Roles:
 -- 1: ADMIN → administra todo
 -- 2: USER → dueño de mascotas
+-- 3: VET → veterinario, puede crear historiales clínicos
 CREATE TABLE usuarios (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(50) NOT NULL,
@@ -49,7 +50,7 @@ CREATE TABLE veterinarios (
 );
 
 -- HISTORIALES CLÍNICOS
--- Relaciona mascota, veterinario, descripcion
+-- Relaciona mascota, veterinario (usuario con rol VET), descripcion
 CREATE TABLE historiales_clinicos (
     id INT AUTO_INCREMENT PRIMARY KEY,
     id_mascota INT NOT NULL,
@@ -64,7 +65,7 @@ CREATE TABLE historiales_clinicos (
 
     CONSTRAINT fk_historial_veterinario
         FOREIGN KEY (id_veterinario)
-        REFERENCES veterinarios(id)
+        REFERENCES usuarios(id)
         ON DELETE RESTRICT
 );
 

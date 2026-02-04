@@ -1,5 +1,4 @@
 export interface JwtPayload {
-  //jsonwebtoken Payload personalizado
   id: number;
   email: string;
   nombre: string;
@@ -7,6 +6,7 @@ export interface JwtPayload {
 }
 
 export enum UserRole {
-  USER = 2,
   ADMIN = 1,
+  USER = 2,
+  VET = 3,
 }

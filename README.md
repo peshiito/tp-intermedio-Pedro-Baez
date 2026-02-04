@@ -206,6 +206,21 @@ app.listen(PORT, () => {
 });
 ```
 
+### src/controllers/admin.controller.ts
+
+```typescript
+import { Request, Response } from "express";
+import pool from "../database/mysql";
+
+export const getUsuarios = async (_req: Request, res: Response) => {
+  const [usuarios] = await pool.query(
+    "SELECT id, nombre, apellido, email, rol_id FROM usuarios",
+  );
+
+  res.json(usuarios);
+};
+```
+
 ### src/controllers/auth.controller.ts
 
 ```typescript
@@ -235,6 +250,7 @@ export const register = async (req: Request, res: Response) => {
       message: "Usuario creado correctamente",
     });
   } catch (error: any) {
+    console.error("Error en register:", error);
     if (error.code === "ER_DUP_ENTRY") {
       return res.status(409).json({ error: "El email ya existe" });
     }
@@ -266,25 +282,11 @@ export const login = async (req: Request, res: Response) => {
 };
 ```
 
-### src/controllers/admin.controller.ts
-
-```typescript
-import { Request, Response } from "express";
-import pool from "../database/mysql";
-
-export const getUsuarios = async (_req: Request, res: Response) => {
-  const [usuarios] = await pool.query(
-    "SELECT id, nombre, apellido, email, rol_id FROM usuarios",
-  );
-
-  res.json(usuarios);
-};
-```
-
 ### src/controllers/mascotas.controller.ts
 
 ```typescript
 import { Request, Response } from "express";
+import { validationResult } from "express-validator";
 import pool from "../database/mysql";
 import { JwtPayload } from "../types/auth";
 
@@ -293,6 +295,12 @@ export const createMascota = async (
   res: Response,
 ) => {
   try {
+    // Verificar errores de validación
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
     if (!req.user) {
       return res.status(401).json({ message: "Usuario no autenticado" });
     }
@@ -312,6 +320,67 @@ export const createMascota = async (
     });
   } catch (error) {
     res.status(500).json({ message: "Error al crear mascota" });
+  }
+};
+
+export const getMascotas = async (
+  req: Request & { user?: JwtPayload },
+  res: Response,
+) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Usuario no autenticado" });
+    }
+
+    const usuarioId = req.user.id;
+
+    const [mascotas] = await pool.query(
+      "SELECT id, nombre, especie, fecha_nacimiento, created_at FROM mascotas WHERE usuario_id = ?",
+      [usuarioId],
+    );
+
+    res.json(mascotas);
+  } catch (error) {
+    res.status(500).json({ message: "Error al obtener mascotas" });
+  }
+};
+
+export const getHistorialMascota = async (
+  req: Request & { user?: JwtPayload },
+  res: Response,
+) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Usuario no autenticado" });
+    }
+
+    const { id } = req.params;
+    const usuarioId = req.user.id;
+
+    // Verificar que la mascota pertenece al usuario
+    const [mascota]: any = await pool.query(
+      "SELECT id FROM mascotas WHERE id = ? AND usuario_id = ?",
+      [id, usuarioId],
+    );
+
+    if (mascota.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "Mascota no encontrada o no autorizada" });
+    }
+
+    const [historiales] = await pool.query(
+      `SELECT h.id, h.descripcion, h.fecha_registro, v.nombre as veterinario_nombre, v.apellido as veterinario_apellido, v.matricula
+       FROM historiales_clinicos h
+       JOIN veterinarios v ON h.id_veterinario = v.id
+       WHERE h.id_mascota = ?
+       ORDER BY h.fecha_registro DESC`,
+      [id],
+    );
+
+    res.json(historiales);
+  } catch (error) {
+    res.status(500).json({ message: "Error al obtener historial" });
   }
 };
 ```
@@ -426,6 +495,20 @@ export const createUser = async (user: Omit<IUser, "id">): Promise<number> => {
 };
 ```
 
+### src/routes/admin.routes.ts
+
+```typescript
+import { Router } from "express";
+import { getUsuarios } from "../controllers/admin.controller";
+import { verifyToken, adminMiddleware } from "../middlewares/auth.middleware";
+
+const router = Router();
+
+router.get("/usuarios", verifyToken, adminMiddleware, getUsuarios);
+
+export default router;
+```
+
 ### src/routes/auth.routes.ts
 
 ```typescript
@@ -444,30 +527,23 @@ router.post("/login", loginValidator, login);
 export default router;
 ```
 
-### src/routes/admin.routes.ts
-
-```typescript
-import { Router } from "express";
-import { getUsuarios } from "../controllers/admin.controller";
-import { verifyToken, adminMiddleware } from "../middlewares/auth.middleware";
-
-const router = Router();
-
-router.get("/usuarios", verifyToken, adminMiddleware, getUsuarios);
-
-export default router;
-```
-
 ### src/routes/mascotas.routes.ts
 
 ```typescript
 import { Router } from "express";
-import { createMascota } from "../controllers/mascotas.controller";
+import {
+  createMascota,
+  getMascotas,
+  getHistorialMascota,
+} from "../controllers/mascotas.controller";
 import { verifyToken } from "../middlewares/auth.middleware";
+import { createMascotaValidator } from "../validators/mascota.validator";
 
 const router = Router();
 
-router.post("/", verifyToken, createMascota);
+router.post("/", verifyToken, createMascotaValidator, createMascota);
+router.get("/", verifyToken, getMascotas);
+router.get("/:id/historial", verifyToken, getHistorialMascota);
 
 export default router;
 ```
@@ -628,404 +704,22 @@ export const loginValidator: ValidationChain[] = [
 ];
 ```
 
-### src/views/dashboard.hbs
-
-```handlebars
-<h1>🐾 Bienvenido a Patitas Felices</h1>
-
-<h2>Hola, {{nombre}}!</h2>
-
-{{#if (eq rol "admin")}}
-  <div class="admin">
-    <p>👑 Eres Administrador</p>
-    <p>Tienes acceso completo al sistema. Puedes gestionar usuarios y todo lo
-      demás.</p>
-  </div>
-{{else}}
-  <div class="user">
-    <p>🙋 Eres Usuario</p>
-    <p>Puedes gestionar tus mascotas y ver sus historiales clínicos.</p>
-  </div>
-{{/if}}
-
-<p>¡Disfruta usando la plataforma!</p>
-```
-
-### src/views/layouts/main.hbs
-
-```handlebars
-<html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>🐾 Patitas Felices - Dashboard</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        background-color: #f4f4f4;
-        color: #333;
-        margin: 0;
-        padding: 20px;
-        text-align: center;
-      }
-      .container {
-        max-width: 600px;
-        margin: 0 auto;
-        background: white;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-      }
-      h1 {
-        color: #4caf50;
-      }
-      h2 {
-        color: #2196f3;
-      }
-      p {
-        font-size: 18px;
-      }
-      .admin {
-        background-color: #fff3cd;
-        padding: 10px;
-        border-radius: 4px;
-      }
-      .user {
-        background-color: #d1ecf1;
-        padding: 10px;
-        border-radius: 4px;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      {{{body}}}
-    </div>
-  </body>
-</html>
-```
-
-try {
-const { nombre, apellido, email, password, telefono, direccion } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ message: "Faltan datos" });
-    }
-
-    // verificar si existe
-    const [exists]: any = await pool.query(
-      "SELECT id FROM usuarios WHERE email = ?",
-      [email],
-    );
-
-    if (exists.length > 0) {
-      return res.status(400).json({ message: "El usuario ya existe" });
-    }
-
-    // hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // rol USER por defecto (id = 2)
-    const [result]: any = await pool.query(
-      `INSERT INTO usuarios
-      (nombre, apellido, email, password, telefono, direccion, rol_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [nombre, apellido, email, hashedPassword, telefono, direccion, 2],
-    );
-
-    const token = jwt.sign(
-      { id: result.insertId, email, nombre, rol_id: 2 },
-      process.env.JWT_SECRET as string,
-      { expiresIn: "1h" },
-    );
-
-    res.status(201).json({
-      message: "Usuario creado correctamente",
-      token,
-    });
-
-} catch (error) {
-console.error(error);
-res.status(500).json({ message: "Error del servidor" });
-}
-};
-
-export const login = async (req: Request, res: Response) => {
-try {
-const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ message: "Faltan datos" });
-    }
-
-    // buscar usuario
-    const [rows]: any = await pool.query(
-      "SELECT id, nombre, email, password, rol_id FROM usuarios WHERE email = ?",
-      [email],
-    );
-
-    if (rows.length === 0) {
-      return res.status(400).json({ message: "Usuario no encontrado" });
-    }
-
-    const user = rows[0];
-
-    // verificar password
-    const isValidPassword = await bcrypt.compare(password, user.password);
-    if (!isValidPassword) {
-      return res.status(400).json({ message: "Contraseña incorrecta" });
-    }
-
-    // generar token
-    const token = jwt.sign(
-      {
-        id: user.id,
-        email: user.email,
-        nombre: user.nombre,
-        rol_id: user.rol_id,
-      },
-      process.env.JWT_SECRET as string,
-      { expiresIn: "1h" },
-    );
-
-    res.json({
-      message: "Login exitoso",
-      token,
-    });
-
-} catch (error) {
-console.error(error);
-res.status(500).json({ message: "Error del servidor" });
-}
-};
-
-````
-
-### src/controllers/mascotas.controller.ts
+### src/validators/mascota.validator.ts
 
 ```typescript
-import { Request, Response } from "express";
-import pool from "../database/mysql";
+import { body } from "express-validator";
+import { ValidationChain } from "express-validator";
 
-export const createMascota = async (
-  req: Request & { user?: any },
-  res: Response,
-) => {
-  try {
-    const { nombre, especie, fecha_nacimiento } = req.body;
-    const usuarioId = req.user.id;
-
-    const [result]: any = await pool.query(
-      `INSERT INTO mascotas (nombre, especie, fecha_nacimiento, usuario_id)
-       VALUES (?, ?, ?, ?)`,
-      [nombre, especie, fecha_nacimiento, usuarioId],
-    );
-
-    res.status(201).json({
-      message: "Mascota registrada",
-      mascotaId: result.insertId,
-    });
-  } catch (error) {
-    res.status(500).json({ message: "Error al crear mascota" });
-  }
-};
-````
-
-### src/database/mysql.ts
-
-```typescript
-import mysql from "mysql2/promise";
-import dotenv from "dotenv";
-
-dotenv.config();
-
-const pool = mysql.createPool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  port: Number(process.env.DB_PORT),
-  waitForConnections: true,
-  connectionLimit: 10,
-});
-
-export default pool;
-```
-
-### src/middlewares/admin.middleware.ts
-
-```typescript
-import { Request, Response, NextFunction } from "express";
-
-export const adminMiddleware = (
-  req: Request & { user?: any },
-  res: Response,
-  next: NextFunction,
-) => {
-  if (req.user.rol_id !== 1) {
-    return res.status(403).json({
-      message: "Acceso solo para administradores",
-    });
-  }
-
-  next();
-};
-```
-
-### src/middlewares/auth.middleware.ts
-
-```typescript
-import { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
-
-export const verifyToken = (
-  req: Request & { user?: any },
-  res: Response,
-  next: NextFunction,
-) => {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader) {
-    return res.status(401).json({ message: "Token requerido" });
-  }
-
-  const token = authHeader.split(" ")[1];
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET as string);
-    req.user = decoded;
-    next();
-  } catch (error) {
-    return res.status(401).json({ message: "Token inválido" });
-  }
-};
-```
-
-### src/models/user.model.ts
-
-```typescript
-import pool from "../database/mysql";
-
-export const findUserByEmail = async (email: string) => {
-  const [rows]: any = await pool.execute(
-    "SELECT * FROM users WHERE email = ?",
-    [email],
-  );
-  return rows[0];
-};
-
-export const createUser = async (
-  nombre: string,
-  email: string,
-  password: string,
-  roleId: number,
-) => {
-  const [result]: any = await pool.execute(
-    "INSERT INTO users (nombre, email, password, role_id) VALUES (?, ?, ?, ?)",
-    [nombre, email, password, roleId],
-  );
-
-  return result.insertId;
-};
-```
-
-### src/routes/admin.routes.ts
-
-```typescript
-import { Router } from "express";
-import { getUsuarios } from "../controllers/admin.controller";
-import { verifyToken } from "../middlewares/auth.middleware";
-import { adminMiddleware } from "../middlewares/admin.middleware";
-
-const router = Router();
-
-router.get("/usuarios", verifyToken, adminMiddleware, getUsuarios);
-
-export default router;
-```
-
-### src/routes/auth.routes.ts
-
-```typescript
-import { Router } from "express";
-import { register, login } from "../controllers/auth.controller";
-
-const router = Router();
-
-router.post("/register", register);
-router.post("/login", login);
-
-export default router;
-```
-
-### src/routes/mascotas.routes.ts
-
-```typescript
-import { Router } from "express";
-import { createMascota } from "../controllers/mascotas.controller";
-import { verifyToken } from "../middlewares/auth.middleware";
-
-const router = Router();
-
-router.post("/", verifyToken, createMascota);
-
-export default router;
-```
-
-### src/services/auth.service.ts
-
-```typescript
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
-import { createUser, findUserByEmail } from "../models/user.model";
-
-const DEFAULT_ROLE_ID = 3; // dueno
-
-export const registerUser = async (
-  nombre: string,
-  email: string,
-  password: string,
-) => {
-  const userExists = await findUserByEmail(email);
-  if (userExists) {
-    throw new Error("El usuario ya existe");
-  }
-
-  const hashedPassword = await bcrypt.hash(password, 10);
-
-  const userId = await createUser(
-    nombre,
-    email,
-    hashedPassword,
-    DEFAULT_ROLE_ID,
-  );
-
-  const token = jwt.sign(
-    {
-      id: userId,
-      email,
-      role: "dueno",
-    },
-    process.env.JWT_SECRET as string,
-    { expiresIn: "1h" },
-  );
-
-  return token;
-};
-```
-
-### src/types/express.d.ts
-
-```typescript
-import { JwtPayload } from "jsonwebtoken";
-
-declare global {
-  namespace Express {
-    interface Request {
-      user?: JwtPayload | any;
-    }
-  }
-}
+export const createMascotaValidator: ValidationChain[] = [
+  body("nombre")
+    .isLength({ min: 1 })
+    .withMessage("Nombre de la mascota es requerido"),
+  body("especie").isLength({ min: 1 }).withMessage("Especie es requerida"),
+  body("fecha_nacimiento")
+    .optional()
+    .isISO8601()
+    .withMessage("Fecha de nacimiento debe ser una fecha válida"),
+];
 ```
 
 ### src/views/dashboard.hbs

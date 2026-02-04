@@ -46,3 +46,19 @@ export const adminMiddleware = (
   }
   next();
 };
+
+/**
+ * Middleware para veterinarios
+ *
+ * Verifica que el usuario sea veterinario
+ */
+export const vetMiddleware = (
+  req: Request & { user?: JwtPayload },
+  res: Response,
+  next: NextFunction,
+) => {
+  if (!req.user || req.user.rol_id !== 3) {
+    return res.status(403).json({ message: "Acceso solo para veterinarios" });
+  }
+  next();
+};
