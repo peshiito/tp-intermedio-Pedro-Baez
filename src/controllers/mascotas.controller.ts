@@ -1,89 +1,146 @@
-import { Request, Response } from "express";
-import pool from "../database/mysql";
+import { NextFunction, Request, Response } from "express";
+import { validationResult } from "express-validator";
 import { JwtPayload } from "../types/auth";
+import { AppError } from "../utils/appError";
+import * as mascotaService from "../services/mascota.service";
 
 export const createMascota = async (
   req: Request & { user?: JwtPayload },
   res: Response,
+  next: NextFunction,
 ) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
     if (!req.user) {
-      return res.status(401).json({ message: "Usuario no autenticado" });
+      throw new AppError("Usuario no autenticado", 401);
     }
 
     const { nombre, especie, fecha_nacimiento } = req.body;
     const usuarioId = req.user.id;
-
-    const [result]: any = await pool.query(
-      `INSERT INTO mascotas (nombre, especie, fecha_nacimiento, usuario_id)
-       VALUES (?, ?, ?, ?)`,
-      [nombre, especie, fecha_nacimiento, usuarioId],
+    const mascotaId = await mascotaService.createMascotaForUser(
+      usuarioId,
+      nombre,
+      especie,
+      fecha_nacimiento,
     );
 
     res.status(201).json({
       message: "Mascota registrada",
-      mascotaId: result.insertId,
+      mascotaId,
     });
   } catch (error) {
-    res.status(500).json({ message: "Error al crear mascota" });
+    next(error);
   }
 };
 
 export const getMascotas = async (
   req: Request & { user?: JwtPayload },
   res: Response,
+  next: NextFunction,
 ) => {
   try {
     if (!req.user) {
-      return res.status(401).json({ message: "Usuario no autenticado" });
+      throw new AppError("Usuario no autenticado", 401);
     }
 
     const usuarioId = req.user.id;
-
-    const [mascotas] = await pool.query(
-      "SELECT id, nombre, especie, fecha_nacimiento, created_at FROM mascotas WHERE usuario_id = ?",
-      [usuarioId],
-    );
+    const mascotas = await mascotaService.listMascotasForUser(usuarioId);
 
     res.json(mascotas);
   } catch (error) {
-    res.status(500).json({ message: "Error al obtener mascotas" });
+    next(error);
   }
 };
 
 export const getHistorialMascota = async (
   req: Request & { user?: JwtPayload },
   res: Response,
+  next: NextFunction,
 ) => {
   try {
     if (!req.user) {
-      return res.status(401).json({ message: "Usuario no autenticado" });
+      throw new AppError("Usuario no autenticado", 401);
     }
 
     const { id } = req.params;
     const usuarioId = req.user.id;
+    const mascotaId = Number(id);
 
-    // Verificar que la mascota pertenece al usuario
-    const [mascota]: any = await pool.query(
-      "SELECT id FROM mascotas WHERE id = ? AND usuario_id = ?",
-      [id, usuarioId],
+    const historiales = await mascotaService.getHistorialMascotaForUser(
+      mascotaId,
+      usuarioId,
     );
-
-    if (mascota.length === 0) {
-      return res.status(404).json({ message: "Mascota no encontrada o no autorizada" });
+    if (!historiales) {
+      throw new AppError("Mascota no encontrada o no autorizada", 404);
     }
-
-    const [historiales] = await pool.query(
-      `SELECT h.id, h.descripcion, h.fecha_registro, v.nombre as veterinario_nombre, v.apellido as veterinario_apellido, v.matricula
-       FROM historiales_clinicos h
-       JOIN veterinarios v ON h.id_veterinario = v.id
-       WHERE h.id_mascota = ?
-       ORDER BY h.fecha_registro DESC`,
-      [id],
-    );
 
     res.json(historiales);
   } catch (error) {
-    res.status(500).json({ message: "Error al obtener historial" });
+    next(error);
+  }
+};
+
+export const updateMascota = async (
+  req: Request & { user?: JwtPayload },
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    if (!req.user) {
+      throw new AppError("Usuario no autenticado", 401);
+    }
+
+    const { id } = req.params;
+    const mascotaId = Number(id);
+    const { nombre, especie, fecha_nacimiento } = req.body;
+    const affectedRows = await mascotaService.updateMascotaForUser(
+      mascotaId,
+      req.user.id,
+      { nombre, especie, fecha_nacimiento },
+    );
+
+    if (!affectedRows) {
+      throw new AppError("Mascota no encontrada o no autorizada", 404);
+    }
+
+    res.json({ message: "Mascota actualizada" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteMascota = async (
+  req: Request & { user?: JwtPayload },
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    if (!req.user) {
+      throw new AppError("Usuario no autenticado", 401);
+    }
+
+    const { id } = req.params;
+    const mascotaId = Number(id);
+    const affectedRows = await mascotaService.deleteMascotaForUser(
+      mascotaId,
+      req.user.id,
+    );
+
+    if (!affectedRows) {
+      throw new AppError("Mascota no encontrada o no autorizada", 404);
+    }
+
+    res.json({ message: "Mascota eliminada" });
+  } catch (error) {
+    next(error);
   }
 };

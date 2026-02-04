@@ -1,8 +1,13 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { validationResult } from "express-validator";
 import * as authService from "../services/auth.service";
+import { AppError } from "../utils/appError";
 
-export const register = async (req: Request, res: Response) => {
+export const register = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     // Verificar errores de validación
     const errors = validationResult(req);
@@ -26,13 +31,17 @@ export const register = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error("Error en register:", error);
     if (error.code === "ER_DUP_ENTRY") {
-      return res.status(409).json({ error: "El email ya existe" });
+      return next(new AppError("El email ya existe", 409));
     }
-    return res.status(500).json({ error: "Error al registrar el usuario" });
+    return next(new AppError("Error al registrar el usuario", 500));
   }
 };
 
-export const login = async (req: Request, res: Response) => {
+export const login = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     // Verificar errores de validación
     const errors = validationResult(req);
@@ -49,8 +58,8 @@ export const login = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     if (error.message === "Credenciales inválidas") {
-      return res.status(401).json({ error: error.message });
+      return next(new AppError(error.message, 401));
     }
-    return res.status(500).json({ error: "Error al iniciar sesión" });
+    return next(new AppError("Error al iniciar sesión", 500));
   }
 };

@@ -5,10 +5,20 @@ COLLATE utf8mb4_unicode_ci;
 
 USE patitas_felices;
 
--- USUARIOS
--- Roles:
+-- ROLES
 -- 1: ADMIN → administra todo
 -- 2: USER → dueño de mascotas
+CREATE TABLE roles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(30) NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO roles (id, nombre) VALUES
+(1, 'ADMIN'),
+(2, 'USER');
+
+-- USUARIOS
 CREATE TABLE usuarios (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(50) NOT NULL,
@@ -18,7 +28,12 @@ CREATE TABLE usuarios (
     telefono VARCHAR(20),
     direccion TEXT,
     rol_id INT NOT NULL DEFAULT 2,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_usuario_rol
+        FOREIGN KEY (rol_id)
+        REFERENCES roles(id)
+        ON DELETE RESTRICT
 );
 
 -- MASCOTAS
