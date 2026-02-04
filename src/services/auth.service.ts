@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt, { SignOptions } from "jsonwebtoken";
 import { findUserByEmail, createUser } from "../models/user.model";
+import { findVeterinarioByEmail } from "../models/veterinario.model";
 import { JwtPayload } from "../types/auth";
 
 if (!process.env.JWT_SECRET) {
@@ -49,6 +50,34 @@ export const loginUser = async (
     email: user.email,
     nombre: user.nombre,
     rol_id: user.rol_id,
+    tipo: "usuario",
+  };
+
+  const options: SignOptions = {
+    expiresIn: "1h",
+    issuer: "patitas-felices",
+  };
+
+  return jwt.sign(payload, secretKey, options);
+};
+
+export const loginVeterinario = async (
+  email: string,
+  password: string,
+): Promise<string> => {
+  const invalidCredentialsError = new Error("Credenciales inválidas");
+
+  const vet = await findVeterinarioByEmail(email);
+  if (!vet) throw invalidCredentialsError;
+
+  const isValid = await bcrypt.compare(password, vet.password);
+  if (!isValid) throw invalidCredentialsError;
+
+  const payload: JwtPayload = {
+    id: vet.id,
+    email: vet.email,
+    nombre: vet.nombre,
+    tipo: "veterinario",
   };
 
   const options: SignOptions = {

@@ -39,10 +39,23 @@ export const adminMiddleware = (
   res: Response,
   next: NextFunction,
 ) => {
-  if (!req.user || req.user.rol_id !== 1) {
+  if (!req.user || req.user.rol_id !== 1 || req.user.tipo !== "usuario") {
     return res
       .status(403)
       .json({ message: "Acceso solo para administradores" });
+  }
+  next();
+};
+
+export const veterinarioMiddleware = (
+  req: Request & { user?: JwtPayload },
+  res: Response,
+  next: NextFunction,
+) => {
+  if (!req.user || req.user.tipo !== "veterinario") {
+    return res
+      .status(403)
+      .json({ message: "Acceso solo para veterinarios" });
   }
   next();
 };

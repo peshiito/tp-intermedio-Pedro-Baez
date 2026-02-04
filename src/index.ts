@@ -6,8 +6,10 @@ import { engine } from "express-handlebars";
 import authRoutes from "./routes/auth.routes";
 import adminRoutes from "./routes/admin.routes";
 import mascotasRoutes from "./routes/mascotas.routes";
+import historialRoutes from "./routes/historial.routes";
 import { verifyToken } from "./middlewares/auth.middleware";
 import { JwtPayload } from "./types/auth";
+import { errorHandler } from "./middlewares/error.middleware";
 
 dotenv.config();
 
@@ -37,6 +39,7 @@ app.set("views", "./src/views");
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/mascotas", mascotasRoutes);
+app.use("/api/historiales", historialRoutes);
 
 // Ruta visual protegida
 app.get(
@@ -55,6 +58,9 @@ app.get(
 app.get("/", (_req, res) => {
   res.send("API Patitas Felices funcionando 🐾");
 });
+
+// Middleware global de errores
+app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);

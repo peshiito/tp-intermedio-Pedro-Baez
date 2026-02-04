@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { register, login } from "../controllers/auth.controller";
+import { register, login, loginVeterinario } from "../controllers/auth.controller";
 import {
   registerValidator,
   loginValidator,
@@ -9,5 +9,6 @@ const router = Router();
 
 router.post("/register", registerValidator, register);
 router.post("/login", loginValidator, login);
+router.post("/veterinarios/login", loginValidator, loginVeterinario);
 
 export default router;

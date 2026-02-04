@@ -11,3 +11,18 @@ export const createMascotaValidator: ValidationChain[] = [
     .isISO8601()
     .withMessage("Fecha de nacimiento debe ser una fecha válida"),
 ];
+
+export const updateMascotaValidator: ValidationChain[] = [
+  body("nombre")
+    .optional()
+    .isLength({ min: 1 })
+    .withMessage("Nombre de la mascota es requerido"),
+  body("especie")
+    .optional()
+    .isLength({ min: 1 })
+    .withMessage("Especie es requerida"),
+  body("fecha_nacimiento")
+    .optional()
+    .isISO8601()
+    .withMessage("Fecha de nacimiento debe ser una fecha válida"),
+];

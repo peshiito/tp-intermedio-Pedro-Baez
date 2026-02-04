@@ -5,10 +5,20 @@ COLLATE utf8mb4_unicode_ci;
 
 USE patitas_felices;
 
--- USUARIOS
--- Roles:
+-- ROLES
 -- 1: ADMIN → administra todo
 -- 2: USER → dueño de mascotas
+CREATE TABLE roles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(30) NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO roles (id, nombre) VALUES
+(1, 'ADMIN'),
+(2, 'USER');
+
+-- USUARIOS
 CREATE TABLE usuarios (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(50) NOT NULL,
@@ -18,7 +28,12 @@ CREATE TABLE usuarios (
     telefono VARCHAR(20),
     direccion TEXT,
     rol_id INT NOT NULL DEFAULT 2,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_usuario_rol
+        FOREIGN KEY (rol_id)
+        REFERENCES roles(id)
+        ON DELETE RESTRICT
 );
 
 -- MASCOTAS
@@ -43,6 +58,8 @@ CREATE TABLE veterinarios (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(50) NOT NULL,
     apellido VARCHAR(50) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
     matricula VARCHAR(50) NOT NULL UNIQUE,
     especialidad VARCHAR(100) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -75,7 +92,7 @@ CREATE INDEX idx_historial_veterinario ON historiales_clinicos(id_veterinario);
 
 -- DATOS DE EJEMPLO
 -- Insertar veterinario de ejemplo
-INSERT INTO veterinarios (nombre, apellido, matricula, especialidad) VALUES
-('Dr. Juan', 'Pérez', 'MAT-001', 'Medicina General');
+INSERT INTO veterinarios (nombre, apellido, email, password, matricula, especialidad) VALUES
+('Dr. Juan', 'Pérez', 'dr.juan@patitas.com', '$2a$10$REEMPLAZAR_HASH', 'MAT-001', 'Medicina General');
 
 -- Nota: Para insertar historiales, primero registra un usuario y una mascota, luego inserta manualmente o desde admin.

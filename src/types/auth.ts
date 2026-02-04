@@ -3,7 +3,8 @@ export interface JwtPayload {
   id: number;
   email: string;
   nombre: string;
-  rol_id: number;
+  rol_id?: number;
+  tipo: "usuario" | "veterinario";
 }
 
 export enum UserRole {
