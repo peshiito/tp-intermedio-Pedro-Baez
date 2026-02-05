@@ -1,0 +1,18 @@
+<h1>🐾 Bienvenido a Patitas Felices</h1>
+
+<h2>Hola, {{nombre}}!</h2>
+
+{{#if (eq rol "admin")}}
+  <div class="admin">
+    <p>👑 Eres Administrador</p>
+    <p>Tienes acceso completo al sistema. Puedes gestionar usuarios y todo lo
+      demás.</p>
+  </div>
+{{else}}
+  <div class="user">
+    <p>🙋 Eres Usuario</p>
+    <p>Puedes gestionar tus mascotas y ver sus historiales clínicos.</p>
+  </div>
+{{/if}}
+
+<p>¡Disfruta usando la plataforma!</p>

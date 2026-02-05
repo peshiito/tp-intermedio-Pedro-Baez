@@ -1,0 +1,64 @@
+version: "3.9"
+
+services:
+  # Servicio MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: Docker-tp-intermedio
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: patitas_felices
+      MYSQL_USER: appuser
+      MYSQL_PASSWORD: apppassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - patitas_network
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-u",
+          "root",
+          "-proot123",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==========================
+  # phpMyAdmin
+  # ==========================
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: patitas_phpmyadmin
+    restart: always
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: root123
+    ports:
+      - "8080:80"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - patitas_network
+
+# Volúmenes
+volumes:
+  mysql_data:
+    driver: local
+
+# Redes
+networks:
+  patitas_network:
+    driver: bridge
